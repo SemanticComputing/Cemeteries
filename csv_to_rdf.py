@@ -54,13 +54,41 @@ class RDFMapper:
             converter = mapping.get('converter')
             value = converter(value) if converter else value
 
+            liter = None
+            current_municipality = None
+            former_municipality = None
+            narc_name = None
+
             if value:
                 if column_name == 'pituus_n' or column_name == 'leveys_e':
                     liter = Literal(value, datatype=XSD.float)
+                elif column_name == 'nykyiset_kunnat':
+                    if isinstance(value, list):
+                        current_municipality = Literal(value[0])
+                        former_municipality = Literal(value[1].split(',')[0])
+                        narc_name = Literal(value[1])
+                    else:
+                        current_municipality = Literal(value.split(',')[0])
+                        former_municipality = None
+                        narc_name = Literal(value)
+                elif column_name == 'hautausmaan_nimi' and value == 'ei_ole':
+                    alt_name = row['nykyiset_kunnat'].split(' / ')
+                    if len(alt_name) == 1:
+                        value = alt_name[0]
+                    else:
+                        value = alt_name[1]
+                    liter = Literal(value)
                 else:
                     liter = Literal(value)
                 # liter = Literal(value, datatype=XSD.date) if type(value) == datetime.date else Literal(value)
-                row_rdf.add((entity_uri, mapping['uri'], liter))
+
+                if column_name == 'nykyiset_kunnat':
+                    row_rdf.add((entity_uri, mapping['uri'], narc_name))
+                    row_rdf.add((entity_uri, mapping['uri2'], current_municipality))
+                    if former_municipality:
+                        row_rdf.add((entity_uri, mapping['uri3'], former_municipality))
+                else:
+                    row_rdf.add((entity_uri, mapping['uri'], liter))
 
             if row_rdf:
                 row_rdf.add((entity_uri, RDF.type, self.instance_class))
@@ -151,7 +179,7 @@ if __name__ == "__main__":
 
         mapper.process_rows()
 
-        mapper.serialize(output_dir + "cemeteries.ttl", output_dir + "schema.ttl")
+        mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-schema.ttl")
 
     
 

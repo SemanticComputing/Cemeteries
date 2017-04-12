@@ -216,3 +216,9 @@ def parse_coordinate(raw_value):
     return dms2dd(parts[0], parts[1], parts[2], parts[3])
 
 
+def split_cemetery_name(raw_value):
+    parts = raw_value.split(' / ')
+    if len(parts) == 1:
+        return raw_value
+    else:
+        return parts
