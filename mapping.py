@@ -51,7 +51,7 @@ CEMETERY_MAPPING = {
     'kuva_4_kuvaajan_nimi': {'uri': SCHEMA_NS.photographer_4,
                              'name_fi': 'Kuvaaja 4',
                              'name_en': 'Photographer 4'},
-    'kuva_5_ muu_muistomerkki': {'uri': SCHEMA_NS.photograph_5,
+    'kuva_5_muu_muistomerkki': {'uri': SCHEMA_NS.photograph_5,
                                  'name_fi': 'Valokuva 5',
                                  'name_en': 'Photograph 5'},
     'kuva_5_kuvaajan_nimi': {'uri': SCHEMA_NS.photographer_5,

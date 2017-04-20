@@ -25,6 +25,7 @@ class RDFMapper:
         self.instance_class = instance_class
         self.table = None
         self.data = Graph()
+        self.photographs = Graph()
         self.schema = Graph()
         logging.basicConfig(filename='cemeteries.log',
                             filemode='a',
@@ -59,7 +60,7 @@ class RDFMapper:
             former_municipality = None
             narc_name = None
 
-            if value:
+            if value and value != 'ei_ole':
                 if column_name == 'pituus_n' or column_name == 'leveys_e':
                     liter = Literal(value, datatype=XSD.float)
                 elif column_name == 'nykyiset_kunnat':
@@ -78,16 +79,26 @@ class RDFMapper:
                     else:
                         value = alt_name[1]
                     liter = Literal(value)
+                elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
+                    ph = column_name[0:6] + '_kuvaajan_nimi'
+                    photographer = row[ph]
+                    photo_club = row['kuvaukset_toteuttanut_kameraseura']
+                    cemetery_id = format(row['nro'], '03d')
+                    photo_number = '0' + column_name[5]
+                    caption = column_name[7:].replace('_', ' ').capitalize()
+                    self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,
+                                                                           entity_uri, photo_number, caption)
+                elif column_name.endswith('kuvaajan_nimi'):
+                    liter = None
                 else:
                     liter = Literal(value)
-                # liter = Literal(value, datatype=XSD.date) if type(value) == datetime.date else Literal(value)
 
                 if column_name == 'nykyiset_kunnat':
                     row_rdf.add((entity_uri, mapping['uri'], narc_name))
                     row_rdf.add((entity_uri, mapping['uri2'], current_municipality))
                     if former_municipality:
                         row_rdf.add((entity_uri, mapping['uri3'], former_municipality))
-                else:
+                elif liter:
                     row_rdf.add((entity_uri, mapping['uri'], liter))
 
             if row_rdf:
@@ -97,6 +108,27 @@ class RDFMapper:
                 logging.debug('No data found for {uri}'.format(uri=entity_uri))
 
         return row_rdf
+
+    def create_photograph_and_photography_event_instances(self, filename, photographer, photo_club, cemetery_id,
+                                                          cemetery_uri, photo_number, caption):
+        photo_rdf = Graph()
+
+        photo_uri = CEMETERY_PHOTO_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
+        photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
+
+        photo_rdf.add((photo_uri, RDF.type, WARSA_PHOTOGRAPHS_NS['Photograph']))
+        photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
+        photo_rdf.add((photo_uri, DC.description, Literal(caption, 'fi')))
+        photo_rdf.add((photo_uri, SCHEMA_ORG.contentUrl,
+                       Literal('http://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
+        photo_rdf.add((photo_uri, SCHEMA_ORG.thumbnailUrl,
+                       Literal('http://static.sotasampo.fi/photographs/cemeteries/300x200px/_p_' + filename)))
+
+        photo_rdf.add((photography_uri, RDF.type, WARSA_EVENT_TYPES_NS['Photography']))
+        photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
+        photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
+
+        self.photographs += photo_rdf
 
     def read_csv(self, csv_input):
         """
@@ -111,33 +143,45 @@ class RDFMapper:
         self.table = csv_data.fillna('').applymap(lambda x: x.strip() if type(x) == str else x)
         self.log.info('Data read from CSV %s' % csv_input)
 
-    def serialize(self, destination_data, destination_schema):
+    def serialize(self, destination_data, destination_photographs, destination_schema):
         """
         Serialize RDF graphs
 
         :param destination_data: serialization destination for data
+        :param destination_photographs: serialization destination for photo data
         :param destination_schema: serialization destination for schema
         :return: output from rdflib.Graph.serialize
         """
-        self.data.bind("c", "http://ldf.fi/warsa/temp/")
-        self.data.bind("cs", "http://ldf.fi/schema/warsa/cemeteries/")
+        self.data.bind("cemeteries_temp", "http://ldf.fi/warsa/temp/")
+        self.data.bind("cemeteries_schema", "http://ldf.fi/schema/warsa/cemeteries/")
         self.data.bind("skos", "http://www.w3.org/2004/02/skos/core#")
-        self.data.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
+        self.data.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.data.bind("foaf", 'http://xmlns.com/foaf/0.1/')
         self.data.bind("bioc", 'http://ldf.fi/schema/bioc/')
 
-        self.schema.bind("cs", "http://ldf.fi/schema/warsa/cemeteries/")
+        self.photographs.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
+        self.photographs.bind("schema", 'http://schema.org/')
+        self.photographs.bind("cemeteries_temp", "http://ldf.fi/warsa/temp/")
+        self.photographs.bind("photos", "http://ldf.fi/warsa/photographs/")
+        self.photographs.bind("cphotos", "http://ldf.fi/warsa/photographs/cemeteries/")
+        self.photographs.bind("events", "http://ldf.fi/warsa/events/")
+        self.photographs.bind("event_types", "http://ldf.fi/warsa/events/event_types/")
+
+        self.schema.bind("cemeteries_schema", "http://ldf.fi/schema/warsa/cemeteries/")
         self.schema.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.schema.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.schema.bind("foaf", 'http://xmlns.com/foaf/0.1/')
         self.schema.bind("bioc", 'http://ldf.fi/schema/bioc/')
 
         data = self.data.serialize(format="turtle", destination=destination_data)
+        photographs = self.photographs.serialize(format="turtle", destination=destination_photographs)
         schema = self.schema.serialize(format="turtle", destination=destination_schema)
+
         self.log.info('Data serialized to %s' % destination_data)
+        self.log.info('Photo data serialized to %s' % destination_photographs)
         self.log.info('Schema serialized to %s' % destination_schema)
 
-        return data, schema  # Return for testing purposes
+        return data, photographs, schema  # Return for testing purposes
 
     def process_rows(self):
         """
@@ -179,7 +223,8 @@ if __name__ == "__main__":
 
         mapper.process_rows()
 
-        mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-schema.ttl")
+        mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-photographs.ttl",
+                         output_dir + "cemeteries-schema.ttl")
 
     
 
