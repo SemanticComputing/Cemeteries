@@ -85,9 +85,20 @@ class RDFMapper:
                     photo_club = row['kuvaukset_toteuttanut_kameraseura']
                     cemetery_id = format(row['nro'], '03d')
                     photo_number = '0' + column_name[5]
-                    caption = column_name[7:].replace('_', ' ').capitalize()
+                    caption_fi = column_name[7:].replace('_', ' ').capitalize()
+                    #print(caption_fi)
+                    if caption_fi == "Yleiskuva sankarihautausmaasta":
+                        caption_en = "Panorama of the cemetery"
+                    elif caption_fi == "Muistomerkki":
+                        caption_en = "Memorial"
+                    elif caption_fi == "Yksittäinen hauta risteineen muistolaattoineen":
+                        caption_en = "Single grave with a cross and a brass"
+                    elif caption_fi == "Muu muistomerkki":
+                        caption_en = "Other memorial"
+                    elif caption_fi == "Yleiskuva":
+                        caption_en = "Panorama of the area"
                     self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,
-                                                                           entity_uri, photo_number, caption)
+                                                                           entity_uri, photo_number, caption_fi, caption_en)
                 elif column_name.endswith('kuvaajan_nimi'):
                     liter = None
                 else:
@@ -110,7 +121,7 @@ class RDFMapper:
         return row_rdf
 
     def create_photograph_and_photography_event_instances(self, filename, photographer, photo_club, cemetery_id,
-                                                          cemetery_uri, photo_number, caption):
+                                                          cemetery_uri, photo_number, caption_fi, caption_en):
         photo_rdf = Graph()
 
         photo_uri = CEMETERY_PHOTO_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
@@ -118,7 +129,8 @@ class RDFMapper:
 
         photo_rdf.add((photo_uri, RDF.type, WARSA_PHOTOGRAPHS_NS['Photograph']))
         photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
-        photo_rdf.add((photo_uri, DC.description, Literal(caption, 'fi')))
+        photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
+        photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
         photo_rdf.add((photo_uri, SCHEMA_ORG.contentUrl,
                        Literal('http://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
         photo_rdf.add((photo_uri, SCHEMA_ORG.thumbnailUrl,
@@ -191,6 +203,8 @@ class RDFMapper:
         #
         for index in range(len(self.table)):
             cemetery_uri = DATA_NS['cemetery_' + str(index)]
+            #print(self.table.ix[index])
+            #print('row number: ' + str(index))
             row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
             if row_rdf:
                 self.data += row_rdf
@@ -225,6 +239,3 @@ if __name__ == "__main__":
 
         mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-photographs.ttl",
                          output_dir + "cemeteries-schema.ttl")
-
-    
-

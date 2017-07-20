@@ -180,6 +180,7 @@ def dms2dd(degrees, minutes, seconds, direction):
     dd = round(dd, 8)
     if direction == 'S' or direction == 'W':
         dd *= -1
+    #print('converted: ' + str(dd))
     return dd
 
 
@@ -192,29 +193,45 @@ def dd2dms(deg):
 
 
 def parse_coordinate(raw_value):
-    if raw_value == 'ei_ole':
+    #print('original: ' + str(raw_value))
+    if raw_value == '' or raw_value == 'ei_ole' :
         return None
+
     # Check if raw value is already in decimal format
-    elif raw_value.count('.') == 1 and raw_value[2] != u"\u00B0":
+    if raw_value[2] == '.' and raw_value.count('.') == 1 and raw_value.count(',') == 0 and raw_value.count('\'') == 0:
         return raw_value
-    # Convert notation to xx°xx'xx"
-    elif raw_value[2] == '.':
+
+    # Convert xx.xx.xx to xx°xx'xx"
+    if raw_value[2] == '.':
         modified = list(raw_value)
+        #print(modified)
+
+        if modified[-2] == '.' and (modified[-1] == 'N' or modified[-1] == 'E'):
+            modified = modified[:-2]
+
+        if modified[-1] == 'N' or modified[-1] == 'E':
+            modified = modified[:-1]
+
         modified[2] = u"\u00B0"
         modified[5] = '\''
         modified += '\"'
         raw_value = "".join(modified)
+        #print(modified)
+
+    elif raw_value[2].isspace():
+        modified = list(raw_value)
+        modified[2] = u"\u00B0"
+        raw_value = "".join(modified)
 
     # Add missing direction
-    if not raw_value.endswith('N') and int(raw_value[0:2]) > 59:
+    if not raw_value.endswith(' N') and int(raw_value[0:2]) > 59:
         raw_value += ' N'
-    elif not raw_value.endswith('E') and int(raw_value[0:2]) < 30:
+    elif not raw_value.endswith(' E') and int(raw_value[0:2]) < 30:
         raw_value += ' E'
 
     # parts = re.split('[^\d\w]+', dms)
-    parts = re.split('[^\d\w\.]+', raw_value)
+    parts = re.split('[^\d\w\.]+', str(raw_value))
     return dms2dd(parts[0], parts[1], parts[2], parts[3])
-
 
 def split_cemetery_name(raw_value):
     parts = raw_value.split(' / ')

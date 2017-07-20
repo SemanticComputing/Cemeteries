@@ -8,11 +8,11 @@ from converters import add_trailing_zeros, parse_coordinate, split_cemetery_name
 from namespaces import *
 
 CEMETERY_MAPPING = {
-    'onko': {'uri': SCHEMA_NS.status,
-             'name_fi': 'Onko hautausmaa'},
-    'tyyppi': {'uri': SCHEMA_NS.cemetery_type,
-               'name_fi': 'Hautausmaan tyyppi',
-               'name_en': 'Cemetery type'},
+    #'onko': {'uri': SCHEMA_NS.status,
+    #         'name_fi': 'Onko hautausmaa'},
+    #'tyyppi': {'uri': SCHEMA_NS.cemetery_type,
+    #           'name_fi': 'Hautausmaan tyyppi',
+    #           'name_en': 'Cemetery type'},
     'nro': {'uri': SCHEMA_NS.cemetery_id,
             'converter': add_trailing_zeros,
             'name_fi': 'Hautausmaan tunniste',
