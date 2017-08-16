@@ -52,65 +52,72 @@ class RDFMapper:
 
             value = row[column_name]
 
+            if value == 'ei_ole' or value == '':
+                # print(value)
+                break
+
             converter = mapping.get('converter')
             value = converter(value) if converter else value
 
             liter = None
             current_municipality = None
             former_municipality = None
-            narc_name = None
+            # narc_name = None
 
-            if value and value != 'ei_ole':
-                if column_name == 'pituus_n' or column_name == 'leveys_e':
-                    liter = Literal(value, datatype=XSD.float)
-                elif column_name == 'nykyiset_kunnat':
-                    if isinstance(value, list):
-                        current_municipality = Literal(value[0])
-                        former_municipality = Literal(value[1].split(',')[0])
-                        narc_name = Literal(value[1])
-                    else:
-                        current_municipality = Literal(value.split(',')[0])
-                        former_municipality = None
-                        narc_name = Literal(value)
-                elif column_name == 'hautausmaan_nimi' and value == 'ei_ole':
-                    alt_name = row['nykyiset_kunnat'].split(' / ')
-                    if len(alt_name) == 1:
-                        value = alt_name[0]
-                    else:
-                        value = alt_name[1]
-                    liter = Literal(value)
-                elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
-                    ph = column_name[0:6] + '_kuvaajan_nimi'
-                    photographer = row[ph]
-                    photo_club = row['kuvaukset_toteuttanut_kameraseura']
-                    cemetery_id = format(row['nro'], '03d')
-                    photo_number = '0' + column_name[5]
-                    caption_fi = column_name[7:].replace('_', ' ').capitalize()
-                    #print(caption_fi)
-                    if caption_fi == "Yleiskuva sankarihautausmaasta":
-                        caption_en = "Panorama of the cemetery"
-                    elif caption_fi == "Muistomerkki":
-                        caption_en = "Memorial"
-                    elif caption_fi == "Yksittäinen hauta risteineen muistolaattoineen":
-                        caption_en = "Single grave with a cross and a brass"
-                    elif caption_fi == "Muu muistomerkki":
-                        caption_en = "Other memorial"
-                    elif caption_fi == "Yleiskuva":
-                        caption_en = "Panorama of the area"
-                    self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,
-                                                                           entity_uri, photo_number, caption_fi, caption_en)
-                elif column_name.endswith('kuvaajan_nimi'):
-                    liter = None
+            if column_name == 'pituus_n' or column_name == 'leveys_e':
+                liter = Literal(value, datatype=XSD.float)
+
+            # special case: nykyiset_kunnat column is split into two properties
+            elif column_name == 'nykyiset_kunnat':
+                # if value == 'Kirkkonummi, vanha hautausmaa':
+                print(value)
+                if isinstance(value, list):
+                    current_municipality = Literal(value[0])
+                    former_municipality = Literal(value[1].split(',')[0])
+                    # narc_name = Literal(value[1])
                 else:
-                    liter = Literal(value)
+                    current_municipality = Literal(value.split(',')[0])
+                    former_municipality = None
+                    # narc_name = Literal(value)
+            elif column_name == 'hautausmaan_nimi':
+                alt_name = row['nykyiset_kunnat'].split(' / ')
+                if len(alt_name) == 1:
+                    value = alt_name[0]
+                else:
+                    value = alt_name[1]
+                liter = Literal(value)
+            elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
+                ph = column_name[0:6] + '_kuvaajan_nimi'
+                photographer = row[ph]
+                photo_club = row['kuvaukset_toteuttanut_kameraseura']
+                cemetery_id = format(row['nro'], '03d')
+                photo_number = '0' + column_name[5]
+                caption_fi = column_name[7:].replace('_', ' ').capitalize()
+                # print(caption_fi)
+                if caption_fi == "Yleiskuva sankarihautausmaasta":
+                    caption_en = "Panorama of the cemetery"
+                elif caption_fi == "Muistomerkki":
+                    caption_en = "Memorial"
+                elif caption_fi == "Yksittäinen hauta risteineen muistolaattoineen":
+                    caption_en = "Single grave with a cross and a brass"
+                elif caption_fi == "Muu muistomerkki":
+                    caption_en = "Other memorial"
+                elif caption_fi == "Yleiskuva":
+                    caption_en = "Panorama of the area"
+                self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,
+                                                                       entity_uri, photo_number, caption_fi, caption_en)
+            elif column_name.endswith('kuvaajan_nimi'):
+                liter = None
+            else:
+                liter = Literal(value)
 
-                if column_name == 'nykyiset_kunnat':
-                    row_rdf.add((entity_uri, mapping['uri'], narc_name))
-                    row_rdf.add((entity_uri, mapping['uri2'], current_municipality))
-                    if former_municipality:
-                        row_rdf.add((entity_uri, mapping['uri3'], former_municipality))
-                elif liter:
-                    row_rdf.add((entity_uri, mapping['uri'], liter))
+            if column_name == 'nykyiset_kunnat':
+                row_rdf.add((entity_uri, mapping['current_municipality_uri'], current_municipality))
+                if former_municipality:
+                    row_rdf.add((entity_uri, mapping['former_municipality_uri'], former_municipality))
+            elif liter:
+                #print(mapping)
+                row_rdf.add((entity_uri, mapping['uri'], liter))
 
             if row_rdf:
                 row_rdf.add((entity_uri, RDF.type, self.instance_class))
@@ -203,19 +210,34 @@ class RDFMapper:
         #
         for index in range(len(self.table)):
             cemetery_uri = DATA_NS['cemetery_' + str(index)]
-            #print(self.table.ix[index])
-            #print('row number: ' + str(index))
+            # print(self.table.ix[index])
+            # print('row number: ' + str(index))
             row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
             if row_rdf:
                 self.data += row_rdf
 
         for prop in CEMETERY_MAPPING.values():
-            self.schema.add((prop['uri'], RDF.type, RDF.Property))
-            if 'name_fi' in prop:
-                self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_fi'], lang='fi')))
-            if 'name_en' in prop:
-                self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_en'], lang='en')))
 
+            if 'uri' in prop:
+                self.schema.add((prop['uri'], RDF.type, RDF.Property))
+                if 'name_fi' in prop:
+                    self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_fi'], lang='fi')))
+                if 'name_en' in prop:
+                    self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_en'], lang='en')))
+
+            # special case: nykyiset_kunnat column is split into two properties
+            else:
+                self.schema.add((prop['current_municipality_uri'], RDF.type, RDF.Property))
+                self.schema.add((prop['current_municipality_uri'], SKOS.prefLabel,
+                                 Literal(prop['current_municipality_name_fi'], lang='fi')))
+                self.schema.add((prop['current_municipality_uri'], SKOS.prefLabel,
+                                 Literal(prop['current_municipality_name_en'], lang='en')))
+
+                self.schema.add((prop['former_municipality_uri'], RDF.type, RDF.Property))
+                self.schema.add((prop['former_municipality_uri'], SKOS.prefLabel,
+                                 Literal(prop['former_municipality_name_fi'], lang='fi')))
+                self.schema.add((prop['former_municipality_uri'], SKOS.prefLabel,
+                                 Literal(prop['former_municipality_name_en'], lang='en')))
 
 if __name__ == "__main__":
 
