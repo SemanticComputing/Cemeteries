@@ -14,7 +14,7 @@ WGS84 = Namespace('http://www.w3.org/2003/01/geo/wgs84_pos#')
 SCHEMA_ORG = Namespace('http://schema.org/')
 
 DATA_NS = Namespace('http://ldf.fi/warsa/temp/')
-SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/cemeteries/')
+SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/')
 EVENTS_NS = Namespace('http://ldf.fi/warsa/events/')
 CEMETERY_PHOTO_NS = Namespace('http://ldf.fi/warsa/photographs/cemeteries/')
 WARSA_PHOTOGRAPHS_NS = Namespace('http://ldf.fi/warsa/photographs/')

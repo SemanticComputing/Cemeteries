@@ -54,38 +54,36 @@ class RDFMapper:
 
             if value == 'ei_ole' or value == '':
                 # print(value)
-                break
+                continue
 
             converter = mapping.get('converter')
             value = converter(value) if converter else value
 
+            # if column_name == 'nro':
+                # print(value)
+
             liter = None
             current_municipality = None
             former_municipality = None
-            # narc_name = None
+            narc_name = None
 
             if column_name == 'pituus_n' or column_name == 'leveys_e':
                 liter = Literal(value, datatype=XSD.float)
 
             # special case: nykyiset_kunnat column is split into two properties
             elif column_name == 'nykyiset_kunnat':
-                # if value == 'Kirkkonummi, vanha hautausmaa':
-                print(value)
                 if isinstance(value, list):
                     current_municipality = Literal(value[0])
                     former_municipality = Literal(value[1].split(',')[0])
-                    # narc_name = Literal(value[1])
+                    narc_name = Literal(value[1])
                 else:
                     current_municipality = Literal(value.split(',')[0])
+                    # if the municipality has not changed, should we add both
+                    # former and current municipality?
                     former_municipality = None
-                    # narc_name = Literal(value)
-            elif column_name == 'hautausmaan_nimi':
-                alt_name = row['nykyiset_kunnat'].split(' / ')
-                if len(alt_name) == 1:
-                    value = alt_name[0]
-                else:
-                    value = alt_name[1]
-                liter = Literal(value)
+                    narc_name = Literal(value)
+
+            # collect all photo info and create photograph and photography instances
             elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
                 ph = column_name[0:6] + '_kuvaajan_nimi'
                 photographer = row[ph]
@@ -104,8 +102,7 @@ class RDFMapper:
                     caption_en = "Other memorial"
                 elif caption_fi == "Yleiskuva":
                     caption_en = "Panorama of the area"
-                self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,
-                                                                       entity_uri, photo_number, caption_fi, caption_en)
+                self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,                                                                       entity_uri, photo_number, caption_fi, caption_en)
             elif column_name.endswith('kuvaajan_nimi'):
                 liter = None
             else:
@@ -113,6 +110,7 @@ class RDFMapper:
 
             if column_name == 'nykyiset_kunnat':
                 row_rdf.add((entity_uri, mapping['current_municipality_uri'], current_municipality))
+                row_rdf.add((entity_uri, mapping['original_narc_name_uri'], narc_name))
                 if former_municipality:
                     row_rdf.add((entity_uri, mapping['former_municipality_uri'], former_municipality))
             elif liter:
@@ -157,7 +155,9 @@ class RDFMapper:
         """
         csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=';', quotechar='"',
                                # parse_dates=[1], infer_datetime_format=True, dayfirst=True,
-                               na_values=[' '], converters={'ammatti': lambda x: x.lower()})
+                               na_values=[' '],
+                               #converters={'ammatti': lambda x: x.lower()}
+                               )
 
         self.table = csv_data.fillna('').applymap(lambda x: x.strip() if type(x) == str else x)
         self.log.info('Data read from CSV %s' % csv_input)
@@ -171,22 +171,24 @@ class RDFMapper:
         :param destination_schema: serialization destination for schema
         :return: output from rdflib.Graph.serialize
         """
-        self.data.bind("cemeteries_temp", "http://ldf.fi/warsa/temp/")
-        self.data.bind("cemeteries_schema", "http://ldf.fi/schema/warsa/cemeteries/")
+        self.data.bind("temp-cemetery", "http://ldf.fi/warsa/temp/")
+        self.data.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.data.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.data.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.data.bind("foaf", 'http://xmlns.com/foaf/0.1/')
         self.data.bind("bioc", 'http://ldf.fi/schema/bioc/')
+        self.data.bind("wgs84", 'http://www.w3.org/2003/01/geo/wgs84_pos#')
 
+        self.photographs.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.photographs.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.photographs.bind("schema", 'http://schema.org/')
-        self.photographs.bind("cemeteries_temp", "http://ldf.fi/warsa/temp/")
+        self.photographs.bind("temp-cemetery", "http://ldf.fi/warsa/temp/")
         self.photographs.bind("photos", "http://ldf.fi/warsa/photographs/")
         self.photographs.bind("cphotos", "http://ldf.fi/warsa/photographs/cemeteries/")
         self.photographs.bind("events", "http://ldf.fi/warsa/events/")
         self.photographs.bind("event_types", "http://ldf.fi/warsa/events/event_types/")
 
-        self.schema.bind("cemeteries_schema", "http://ldf.fi/schema/warsa/cemeteries/")
+        self.schema.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.schema.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.schema.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.schema.bind("foaf", 'http://xmlns.com/foaf/0.1/')
@@ -224,9 +226,8 @@ class RDFMapper:
                     self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_fi'], lang='fi')))
                 if 'name_en' in prop:
                     self.schema.add((prop['uri'], SKOS.prefLabel, Literal(prop['name_en'], lang='en')))
-
-            # special case: nykyiset_kunnat column is split into two properties
-            else:
+            # special case: nykyiset_kunnat column is split into three properties
+            elif 'current_municipality_uri' in prop:
                 self.schema.add((prop['current_municipality_uri'], RDF.type, RDF.Property))
                 self.schema.add((prop['current_municipality_uri'], SKOS.prefLabel,
                                  Literal(prop['current_municipality_name_fi'], lang='fi')))
@@ -238,6 +239,8 @@ class RDFMapper:
                                  Literal(prop['former_municipality_name_fi'], lang='fi')))
                 self.schema.add((prop['former_municipality_uri'], SKOS.prefLabel,
                                  Literal(prop['former_municipality_name_en'], lang='en')))
+            else:
+                continue
 
 if __name__ == "__main__":
 

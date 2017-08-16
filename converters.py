@@ -171,7 +171,8 @@ def strip_dash(raw_value: str):
 
 
 def add_trailing_zeros(raw_value):
-    return format(raw_value, '03d')
+    i = convert_int(raw_value)
+    return format(i, '03d')
 
 
 # http://en.proft.me/2015/09/20/converting-latitude-and-longitude-decimal-values-p/
