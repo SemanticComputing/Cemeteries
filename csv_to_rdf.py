@@ -132,7 +132,7 @@ class RDFMapper:
         photo_uri = CEMETERY_PHOTO_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
 
-        photo_rdf.add((photo_uri, RDF.type, WARSA_PHOTOGRAPHS_NS['Photograph']))
+        photo_rdf.add((photo_uri, RDF.type, SCHEMA_NS['Photograph']))
         photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
@@ -141,7 +141,7 @@ class RDFMapper:
         photo_rdf.add((photo_uri, SCHEMA_ORG.thumbnailUrl,
                        Literal('http://static.sotasampo.fi/photographs/cemeteries/300x200px/_p_' + filename)))
 
-        photo_rdf.add((photography_uri, RDF.type, WARSA_EVENT_TYPES_NS['Photography']))
+        photo_rdf.add((photography_uri, RDF.type, SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
         photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
 
