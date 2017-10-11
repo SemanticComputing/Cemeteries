@@ -194,44 +194,50 @@ def dd2dms(deg):
 
 
 def parse_coordinate(raw_value):
-    #print('original: ' + str(raw_value))
+
     if raw_value == '' or raw_value == 'ei_ole' :
         return None
 
-    # Check if raw value is already in decimal format
-    if raw_value[2] == '.' and raw_value.count('.') == 1 and raw_value.count(',') == 0 and raw_value.count('\'') == 0:
-        return raw_value
+    # Convert xx.xx.xx.x to xx°xx'xx"
 
-    # Convert xx.xx.xx to xx°xx'xx"
-    if raw_value[2] == '.':
+    # strip whitespace
+    raw_value = "".join(raw_value.split())
+
+
+    if raw_value[2] == '.' or raw_value[2].isspace() or raw_value[2] == ',':
         modified = list(raw_value)
-        #print(modified)
 
-        if modified[-2] == '.' and (modified[-1] == 'N' or modified[-1] == 'E'):
+        # remove double periods
+        if modified[-1] == '.' and modified[-2] == '.':
             modified = modified[:-2]
 
-        if modified[-1] == 'N' or modified[-1] == 'E':
+        # remove periods from end
+        if modified[-1] == '.':
             modified = modified[:-1]
 
         modified[2] = u"\u00B0"
         modified[5] = '\''
         modified += '\"'
-        raw_value = "".join(modified)
-        #print(modified)
+        new_value = "".join(modified)
+    else:
+        return None
 
-    elif raw_value[2].isspace():
-        modified = list(raw_value)
-        modified[2] = u"\u00B0"
-        raw_value = "".join(modified)
-
-    # Add missing direction
-    if not raw_value.endswith(' N') and int(raw_value[0:2]) > 59:
+    # Add direction
+    if not new_value.endswith(' N') and int(new_value[0:2]) > 59:
         raw_value += ' N'
-    elif not raw_value.endswith(' E') and int(raw_value[0:2]) < 30:
-        raw_value += ' E'
+    elif not new_value.endswith(' E') and int(new_value[0:2]) < 30:
+        new_value += ' E'
 
     # parts = re.split('[^\d\w]+', dms)
-    parts = re.split('[^\d\w\.]+', str(raw_value))
+    parts = re.split('[^\d\w\.]+', str(new_value))
+    #print('original: ' + str(raw_value))
+
+    # remove double periods from seconds
+    if parts[2].count('.') > 1:
+        oldstr = parts[2]
+        newstr = oldstr[:3] + oldstr[4:]
+        parts[2] = newstr
+
     return dms2dd(parts[0], parts[1], parts[2], parts[3])
 
 def split_cemetery_name(raw_value):
