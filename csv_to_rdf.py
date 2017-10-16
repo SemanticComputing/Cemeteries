@@ -130,27 +130,15 @@ class RDFMapper:
 
     def create_photograph_and_photography_event_instances(self, filename, photographer, photo_club, cemetery_id,
                                                           cemetery_uri, photo_number, caption_fi, caption_en):
-        photo_rdf = Graph()
 
+        # URIs
+        lg_uri = WARSA_MEDIA_NS['cemetery_photo_lg_' + cemetery_id + '_' + photo_number]
+        sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
         photo_uri = WARSA_PHOTOGRAPHS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
 
-        # warsa-schema:Photographs
-        photo_rdf.add((photo_uri, RDF.type, WARSA_SCHEMA_NS['Photograph']))
-        photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
-        photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
-        photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
-
-        # photography events
-        photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
-        photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
-        photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
-
-        self.photographs += photo_rdf
-
+        # create information objects
         io_rdf = Graph()
-
-        lg_uri = WARSA_MEDIA_NS['cemetery_photo_lg_' + cemetery_id + '_' + photo_number]
         io_rdf.add((lg_uri, SCHEMA_ORG.contentUrl,
                        Literal('https://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
         io_rdf.add((lg_uri, CIDOC.P138_represents, photo_uri))
@@ -159,7 +147,6 @@ class RDFMapper:
         io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Suuri', 'fi')))
         io_rdf.add((lg_uri, PHOTOGRAPH_SCHEMA_NS.size, PHOTOGRAPH_SCHEMA_NS.lg))
 
-        sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
         io_rdf.add((sm_uri, SCHEMA_ORG.contentUrl,
                        Literal('https://static.sotasampo.fi/photographs/cemeteries/300x200px/' + filename)))
         io_rdf.add((sm_uri, CIDOC.P138_represents, photo_uri))
@@ -170,6 +157,20 @@ class RDFMapper:
 
         self.information_objects += io_rdf
 
+        # create :Photogaph and :Photography instances
+        photo_rdf = Graph()
+        photo_rdf.add((photo_uri, RDF.type, WARSA_SCHEMA_NS['Photograph']))
+        photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
+        photo_rdf.add((photo_uri, CIDOC.P138i_has_representation, lg_uri))
+        photo_rdf.add((photo_uri, CIDOC.P138i_has_representation, sm_uri))
+        photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
+        photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
+
+        photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
+        photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
+        photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
+
+        self.photographs += photo_rdf
 
     def read_csv(self, csv_input):
         """
