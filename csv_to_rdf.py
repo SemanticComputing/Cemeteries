@@ -53,7 +53,7 @@ class RDFMapper:
 
             value = row[column_name]
 
-            if value == 'ei_ole' or value == '':
+            if value == 'ei_ole' or value == 'ei ole' or value == '':
                 # print(value)
                 continue
 
@@ -69,7 +69,8 @@ class RDFMapper:
             narc_name = None
 
             if column_name == 'pituus_n' or column_name == 'leveys_e':
-                liter = Literal(value, datatype=XSD.float)
+                if value:
+                    liter = Literal(value, datatype=XSD.float)
 
             # special case: nykyiset_kunnat column is split into two properties
             elif column_name == 'nykyiset_kunnat':
@@ -131,17 +132,17 @@ class RDFMapper:
                                                           cemetery_uri, photo_number, caption_fi, caption_en):
         photo_rdf = Graph()
 
-        photo_uri = CEMETERY_PHOTO_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
+        photo_uri = WARSA_PHOTOGRAPHS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
 
         # warsa-schema:Photographs
-        photo_rdf.add((photo_uri, RDF.type, SCHEMA_NS['Photograph']))
+        photo_rdf.add((photo_uri, RDF.type, WARSA_SCHEMA_NS['Photograph']))
         photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
 
         # photography events
-        photo_rdf.add((photography_uri, RDF.type, SCHEMA_NS['Photography']))
+        photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
         photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
 
@@ -150,17 +151,22 @@ class RDFMapper:
         io_rdf = Graph()
 
         lg_uri = WARSA_MEDIA_NS['cemetery_photo_lg_' + cemetery_id + '_' + photo_number]
-        sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
-
         io_rdf.add((lg_uri, SCHEMA_ORG.contentUrl,
-                       Literal('http://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
+                       Literal('https://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
         io_rdf.add((lg_uri, CIDOC.P138_represents, photo_uri))
         io_rdf.add((lg_uri, RDF.type, CIDOC.E73_Information_Object))
-        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Thumbnail', 'en')))
-        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Pieni', 'fi')))
+        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Full size', 'en')))
+        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Suuri', 'fi')))
+        io_rdf.add((lg_uri, PHOTOGRAPH_SCHEMA_NS.size, PHOTOGRAPH_SCHEMA_NS.lg))
 
+        sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
         io_rdf.add((sm_uri, SCHEMA_ORG.contentUrl,
-                       Literal('http://static.sotasampo.fi/photographs/cemeteries/300x200px/' + filename)))
+                       Literal('https://static.sotasampo.fi/photographs/cemeteries/300x200px/' + filename)))
+        io_rdf.add((sm_uri, CIDOC.P138_represents, photo_uri))
+        io_rdf.add((sm_uri, RDF.type, CIDOC.E73_Information_Object))
+        io_rdf.add((sm_uri, SKOS.prefLabel, Literal('Thumbnail', 'en')))
+        io_rdf.add((sm_uri, SKOS.prefLabel, Literal('Pieni', 'fi')))
+        io_rdf.add((sm_uri, PHOTOGRAPH_SCHEMA_NS.size, PHOTOGRAPH_SCHEMA_NS.sm))
 
         self.information_objects += io_rdf
 
@@ -190,27 +196,29 @@ class RDFMapper:
         :return: output from rdflib.Graph.serialize
         """
         self.data.bind("temp-cemetery", "http://ldf.fi/warsa/temp/")
-        self.data.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.data.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.data.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.data.bind("foaf", 'http://xmlns.com/foaf/0.1/')
         self.data.bind("bioc", 'http://ldf.fi/schema/bioc/')
         self.data.bind("wgs84", 'http://www.w3.org/2003/01/geo/wgs84_pos#')
+        self.data.bind("", "http://ldf.fi/schema/warsa/")
+        self.data.bind("wces", "http://ldf.fi/schema/warsa/places/cemeteries/")
 
-        self.photographs.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.photographs.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.photographs.bind("schema", 'http://schema.org/')
+        self.photographs.bind("dc-terms", "http://purl.org/dc/terms/")
+        self.photographs.bind("", "http://ldf.fi/schema/warsa/")
         self.photographs.bind("temp-cemetery", "http://ldf.fi/warsa/temp/")
-        self.photographs.bind("photos", "http://ldf.fi/warsa/photographs/")
-        self.photographs.bind("cphotos", "http://ldf.fi/warsa/photographs/cemeteries/")
-        self.photographs.bind("events", "http://ldf.fi/warsa/events/")
-        self.photographs.bind("event_types", "http://ldf.fi/warsa/events/event_types/")
+        self.photographs.bind("wph", "http://ldf.fi/warsa/photographs/")
+        self.photographs.bind("wev", "http://ldf.fi/warsa/events/")
 
         self.information_objects.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.information_objects.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.information_objects.bind("schema", 'http://schema.org/')
+        self.information_objects.bind("wphs", 'http://ldf.fi/schema/warsa/photographs/')
+        self.information_objects.bind("wme", 'http://ldf.fi/warsa/media/')
 
-        self.schema.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
+        self.schema.bind("", "http://ldf.fi/schema/warsa/")
         self.schema.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.schema.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.schema.bind("foaf", 'http://xmlns.com/foaf/0.1/')
@@ -281,10 +289,10 @@ if __name__ == "__main__":
     output_dir = args.output + '/' if args.output[-1] != '/' else args.output
 
     if args.mode == "CEMETERIES":
-        mapper = RDFMapper(CEMETERY_MAPPING, SCHEMA_NS.TempCemetery, loglevel=args.loglevel.upper())
+        mapper = RDFMapper(CEMETERY_MAPPING, CEMETERY_SCHEMA_NS.TempCemetery, loglevel=args.loglevel.upper())
         mapper.read_csv(args.input)
 
         mapper.process_rows()
 
         mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-photographs.ttl",
-                         output_dir + "cemeteries-information-objects", output_dir + "cemeteries-schema.ttl")
+                         output_dir + "cemetery-photo-media", output_dir + "cemeteries-schema.ttl")
