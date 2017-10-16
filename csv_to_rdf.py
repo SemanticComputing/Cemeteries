@@ -26,6 +26,7 @@ class RDFMapper:
         self.table = None
         self.data = Graph()
         self.photographs = Graph()
+        self.information_objects = Graph()
         self.schema = Graph()
         logging.basicConfig(filename='cemeteries.log',
                             filemode='a',
@@ -102,7 +103,8 @@ class RDFMapper:
                     caption_en = "Other memorial"
                 elif caption_fi == "Yleiskuva":
                     caption_en = "Panorama of the area"
-                self.create_photograph_and_photography_event_instances(value, photographer, photo_club, cemetery_id,                                                                       entity_uri, photo_number, caption_fi, caption_en)
+                self.create_photograph_and_photography_event_instances(value,
+                photographer, photo_club, cemetery_id,entity_uri, photo_number, caption_fi, caption_en)
             elif column_name.endswith('kuvaajan_nimi'):
                 liter = None
             else:
@@ -132,20 +134,36 @@ class RDFMapper:
         photo_uri = CEMETERY_PHOTO_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
 
+        # warsa-schema:Photographs
         photo_rdf.add((photo_uri, RDF.type, SCHEMA_NS['Photograph']))
         photo_rdf.add((photo_uri, CIDOC.P138_represents, cemetery_uri))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
-        photo_rdf.add((photo_uri, SCHEMA_ORG.contentUrl,
-                       Literal('http://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
-        photo_rdf.add((photo_uri, SCHEMA_ORG.thumbnailUrl,
-                       Literal('http://static.sotasampo.fi/photographs/cemeteries/300x200px/_p_' + filename)))
 
+        # photography events
         photo_rdf.add((photography_uri, RDF.type, SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
         photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
 
         self.photographs += photo_rdf
+
+        io_rdf = Graph()
+
+        lg_uri = WARSA_MEDIA_NS['cemetery_photo_lg_' + cemetery_id + '_' + photo_number]
+        sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
+
+        io_rdf.add((lg_uri, SCHEMA_ORG.contentUrl,
+                       Literal('http://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
+        io_rdf.add((lg_uri, CIDOC.P138_represents, photo_uri))
+        io_rdf.add((lg_uri, RDF.type, CIDOC.E73_Information_Object))
+        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Thumbnail', 'en')))
+        io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Pieni', 'fi')))
+
+        io_rdf.add((sm_uri, SCHEMA_ORG.contentUrl,
+                       Literal('http://static.sotasampo.fi/photographs/cemeteries/300x200px/' + filename)))
+
+        self.information_objects += io_rdf
+
 
     def read_csv(self, csv_input):
         """
@@ -162,7 +180,7 @@ class RDFMapper:
         self.table = csv_data.fillna('').applymap(lambda x: x.strip() if type(x) == str else x)
         self.log.info('Data read from CSV %s' % csv_input)
 
-    def serialize(self, destination_data, destination_photographs, destination_schema):
+    def serialize(self, destination_data, destination_photographs, destination_ios, destination_schema):
         """
         Serialize RDF graphs
 
@@ -188,6 +206,10 @@ class RDFMapper:
         self.photographs.bind("events", "http://ldf.fi/warsa/events/")
         self.photographs.bind("event_types", "http://ldf.fi/warsa/events/event_types/")
 
+        self.information_objects.bind("skos", "http://www.w3.org/2004/02/skos/core#")
+        self.information_objects.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
+        self.information_objects.bind("schema", 'http://schema.org/')
+
         self.schema.bind("warsa-schema", "http://ldf.fi/schema/warsa/")
         self.schema.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.schema.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
@@ -196,13 +218,15 @@ class RDFMapper:
 
         data = self.data.serialize(format="turtle", destination=destination_data)
         photographs = self.photographs.serialize(format="turtle", destination=destination_photographs)
+        information_objects = self.information_objects.serialize(format="turtle", destination=destination_ios)
         schema = self.schema.serialize(format="turtle", destination=destination_schema)
 
         self.log.info('Data serialized to %s' % destination_data)
         self.log.info('Photo data serialized to %s' % destination_photographs)
+        self.log.info('Information object data serialized to %s' % destination_ios)
         self.log.info('Schema serialized to %s' % destination_schema)
 
-        return data, photographs, schema  # Return for testing purposes
+        return data, photographs, information_objects, schema  # Return for testing purposes
 
     def process_rows(self):
         """
@@ -263,4 +287,4 @@ if __name__ == "__main__":
         mapper.process_rows()
 
         mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-photographs.ttl",
-                         output_dir + "cemeteries-schema.ttl")
+                         output_dir + "cemeteries-information-objects", output_dir + "cemeteries-schema.ttl")
