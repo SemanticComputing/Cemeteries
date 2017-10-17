@@ -45,6 +45,8 @@ class RDFMapper:
         """
 
         row_rdf = Graph()
+        casualties_source_uri = WARSA_SOURCE_NS['source9']
+        photo_project_source_uri = WARSA_SOURCE_NS['source21']
 
         # Loop through the mapping dict and convert data to RDF
         for column_name in self.mapping:
@@ -122,9 +124,14 @@ class RDFMapper:
 
             if row_rdf:
                 row_rdf.add((entity_uri, RDF.type, self.instance_class))
+                # cemetery data is based on two sources
+                row_rdf.add((entity_uri, DC.source, photo_project_source_uri))
+                row_rdf.add((entity_uri, DC.source, casualties_source_uri))
+
             else:
                 # Don't create class instance if there is no data about it
                 logging.debug('No data found for {uri}'.format(uri=entity_uri))
+
 
         return row_rdf
 
@@ -136,6 +143,8 @@ class RDFMapper:
         sm_uri = WARSA_MEDIA_NS['cemetery_photo_sm_' + cemetery_id + '_' + photo_number]
         photo_uri = WARSA_PHOTOGRAPHS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
+        photo_project_source_uri = WARSA_SOURCE_NS['source21']
+
 
         # create information objects
         io_rdf = Graph()
@@ -165,10 +174,13 @@ class RDFMapper:
         photo_rdf.add((photo_uri, CIDOC.P138i_has_representation, sm_uri))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_fi, 'fi')))
         photo_rdf.add((photo_uri, DC.description, Literal(caption_en, 'en')))
+        photo_rdf.add((photo_uri, DC.source, photo_project_source_uri))
+
 
         photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
         photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
+        photo_rdf.add((photography_uri, DC.source, photo_project_source_uri))
 
         self.photographs += photo_rdf
 
@@ -204,6 +216,7 @@ class RDFMapper:
         self.data.bind("wgs84", 'http://www.w3.org/2003/01/geo/wgs84_pos#')
         self.data.bind("", "http://ldf.fi/schema/warsa/")
         self.data.bind("wces", "http://ldf.fi/schema/warsa/places/cemeteries/")
+        self.data.bind("wso", "http://ldf.fi/warsa/sources/")
 
         self.photographs.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.photographs.bind("schema", 'http://schema.org/')
@@ -212,6 +225,7 @@ class RDFMapper:
         self.photographs.bind("temp-cemetery", "http://ldf.fi/warsa/temp/")
         self.photographs.bind("wph", "http://ldf.fi/warsa/photographs/")
         self.photographs.bind("wev", "http://ldf.fi/warsa/events/")
+        self.photographs.bind("wso", "http://ldf.fi/warsa/sources/")
 
         self.information_objects.bind("skos", "http://www.w3.org/2004/02/skos/core#")
         self.information_objects.bind("cidoc", 'http://www.cidoc-crm.org/cidoc-crm/')
