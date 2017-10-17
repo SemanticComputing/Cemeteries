@@ -217,6 +217,7 @@ class RDFMapper:
         self.data.bind("", "http://ldf.fi/schema/warsa/")
         self.data.bind("wces", "http://ldf.fi/schema/warsa/places/cemeteries/")
         self.data.bind("wso", "http://ldf.fi/warsa/sources/")
+        self.data.bind("dc-terms", "http://purl.org/dc/terms/")
 
         self.photographs.bind("crm", 'http://www.cidoc-crm.org/cidoc-crm/')
         self.photographs.bind("schema", 'http://schema.org/')
