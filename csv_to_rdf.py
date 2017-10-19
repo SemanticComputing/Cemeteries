@@ -15,7 +15,7 @@ from mapping import CEMETERY_MAPPING
 from namespaces import *
 import csv
 from converters import split_cemetery_name
-
+from pathlib import Path
 
 class RDFMapper:
     """
@@ -32,6 +32,9 @@ class RDFMapper:
         self.schema = Graph()
         self.narc_names = {}
         self.new_cemetery_id = 923
+        self.photo_counter = 0
+        self.missing_filenames = []
+        self.missing_filename_columns = []
         logging.basicConfig(filename='cemeteries.log',
                             filemode='a',
                             level=getattr(logging, loglevel),
@@ -107,6 +110,13 @@ class RDFMapper:
                     caption_en = "Other memorial"
                 elif caption_fi == "Yleiskuva":
                     caption_en = "Panorama of the area"
+
+                # check if photo files exist
+                my_file = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
+                if not my_file.is_file():
+                    self.missing_filenames.append(value)
+                    self.missing_filename_columns.append(column_name)
+
                 self.create_photograph_and_photography_event_instances(value,
                 photographer, photo_club, cemetery_id, entity_uri, photo_number, caption_fi, caption_en)
             elif column_name.endswith('kuvaajan_nimi'):
@@ -146,7 +156,6 @@ class RDFMapper:
         photography_uri = EVENTS_NS['cemetery_photo_' + cemetery_id + '_' + photo_number]
         photo_project_source_uri = WARSA_SOURCE_NS['source21']
 
-
         # create information objects
         io_rdf = Graph()
         io_rdf.add((lg_uri, SCHEMA_ORG.contentUrl,
@@ -184,6 +193,7 @@ class RDFMapper:
         photo_rdf.add((photography_uri, DC.source, photo_project_source_uri))
 
         self.photographs += photo_rdf
+        self.photo_counter += 1
 
     def read_csv(self, csv_input):
         """
@@ -296,6 +306,16 @@ class RDFMapper:
                 row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
             if row_rdf:
                 self.data += row_rdf
+
+        self.log.info('Photos created: %s' % self.photo_counter)
+        #print(len(self.missing_filenames))
+        #print(len(self.missing_filename_columns))
+        #for filename in self.missing_filenames:
+        #    print(filename)
+        #for column in self.missing_filename_columns:
+        #    print(column)
+
+
 
         # Generate simple cemeteries with no metadata from the leftover
         # cemeteries that were not found in the photography project
