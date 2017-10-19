@@ -241,8 +241,26 @@ def parse_coordinate(raw_value):
     return dms2dd(parts[0], parts[1], parts[2], parts[3])
 
 def split_cemetery_name(raw_value):
+
     parts = raw_value.split(' / ')
     if len(parts) == 1:
-        return raw_value
+        # no former municipality
+        former_municipality = None
+        # municipality, name of the cemetery etc
+        current_municipality = raw_value.split(',')[0]
+        narc_name = raw_value
+    #else isinstance(parts, list):
     else:
-        return parts
+        current_municipality = parts[0]
+        former_municipality = parts[1].split(',')[0]
+        narc_name = parts[1]
+    #else:
+#        current_municipality = parts.split(',')[0]
+        # if the municipality has not changed, should we add both
+        # former and current municipality?
+#        former_municipality = None
+#        narc_name = value)
+
+    return { 'current_municipality': current_municipality,
+        'former_municipality': former_municipality,
+        'narc_name': narc_name }

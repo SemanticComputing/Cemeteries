@@ -13,6 +13,8 @@ import pandas as pd
 from rdflib import URIRef, Graph, Literal
 from mapping import CEMETERY_MAPPING
 from namespaces import *
+import csv
+from converters import split_cemetery_name
 
 
 class RDFMapper:
@@ -28,6 +30,8 @@ class RDFMapper:
         self.photographs = Graph()
         self.information_objects = Graph()
         self.schema = Graph()
+        self.narc_names = {}
+        self.new_cemetery_id = 923
         logging.basicConfig(filename='cemeteries.log',
                             filemode='a',
                             level=getattr(logging, loglevel),
@@ -55,6 +59,10 @@ class RDFMapper:
 
             value = row[column_name]
 
+            if column_name == 'hautausmaan_nimi' and value == 'ei_ole':
+                names = split_cemetery_name(row['nykyiset_kunnat'])
+                value = names['narc_name']
+
             if value == 'ei_ole' or value == 'ei ole' or value == '':
                 # print(value)
                 continue
@@ -65,6 +73,7 @@ class RDFMapper:
             # if column_name == 'nro':
                 # print(value)
 
+            # gather info into these variables
             liter = None
             current_municipality = None
             former_municipality = None
@@ -73,20 +82,12 @@ class RDFMapper:
             if column_name == 'pituus_n' or column_name == 'leveys_e':
                 if value:
                     liter = Literal(value, datatype=XSD.float)
-
-            # special case: nykyiset_kunnat column is split into two properties
+            # nykyiset_kunnat column is split into three properties
             elif column_name == 'nykyiset_kunnat':
-                if isinstance(value, list):
-                    current_municipality = Literal(value[0])
-                    former_municipality = Literal(value[1].split(',')[0])
-                    narc_name = Literal(value[1])
-                else:
-                    current_municipality = Literal(value.split(',')[0])
-                    # if the municipality has not changed, should we add both
-                    # former and current municipality?
-                    former_municipality = None
-                    narc_name = Literal(value)
-
+                current_municipality = Literal(value['current_municipality'])
+                if value['former_municipality']:
+                    former_municipality = Literal(value['former_municipality'])
+                narc_name = Literal(value['narc_name'])
             # collect all photo info and create photograph and photography instances
             elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
                 ph = column_name[0:6] + '_kuvaajan_nimi'
@@ -107,16 +108,17 @@ class RDFMapper:
                 elif caption_fi == "Yleiskuva":
                     caption_en = "Panorama of the area"
                 self.create_photograph_and_photography_event_instances(value,
-                photographer, photo_club, cemetery_id,entity_uri, photo_number, caption_fi, caption_en)
+                photographer, photo_club, cemetery_id, entity_uri, photo_number, caption_fi, caption_en)
             elif column_name.endswith('kuvaajan_nimi'):
                 liter = None
             else:
                 liter = Literal(value)
 
+            # create RDF data
             if column_name == 'nykyiset_kunnat':
                 row_rdf.add((entity_uri, mapping['current_municipality_uri'], current_municipality))
                 row_rdf.add((entity_uri, mapping['original_narc_name_uri'], narc_name))
-                if former_municipality:
+                if former_municipality and former_municipality != None:
                     row_rdf.add((entity_uri, mapping['former_municipality_uri'], former_municipality))
             elif liter:
                 #print(mapping)
@@ -127,7 +129,6 @@ class RDFMapper:
                 # cemetery data is based on two sources
                 row_rdf.add((entity_uri, DC.source, photo_project_source_uri))
                 row_rdf.add((entity_uri, DC.source, casualties_source_uri))
-
             else:
                 # Don't create class instance if there is no data about it
                 logging.debug('No data found for {uri}'.format(uri=entity_uri))
@@ -199,6 +200,23 @@ class RDFMapper:
         self.table = csv_data.fillna('').applymap(lambda x: x.strip() if type(x) == str else x)
         self.log.info('Data read from CSV %s' % csv_input)
 
+    def read_narc_cemetery_uris_from_csv(self):
+        reader = csv.DictReader(open('cemetery-uris-labels-narc.csv'))
+        for row in reader:
+            key = row.pop('original_narc_name').rstrip()
+            if key in self.narc_names:
+                # ignore duplicate labels
+                pass
+            self.narc_names[key] = row.pop('uri').rstrip()
+
+    def create_extra_cemeteries(self, cemeteries):
+        cemetery_rdf = Graph()
+        for label in cemeteries:
+            cemetery_uri = URIRef(cemeteries[label])
+            cemetery_rdf.add((cemetery_uri, RDF.type, self.instance_class))
+            cemetery_rdf.add((cemetery_uri, SKOS.prefLabel, Literal(label)))
+        return cemetery_rdf
+
     def serialize(self, destination_data, destination_photographs, destination_ios, destination_schema):
         """
         Serialize RDF graphs
@@ -216,6 +234,7 @@ class RDFMapper:
         self.data.bind("wgs84", 'http://www.w3.org/2003/01/geo/wgs84_pos#')
         self.data.bind("", "http://ldf.fi/schema/warsa/")
         self.data.bind("wces", "http://ldf.fi/schema/warsa/places/cemeteries/")
+        self.data.bind("wce", 'http://ldf.fi/warsa/places/cemeteries/')
         self.data.bind("wso", "http://ldf.fi/warsa/sources/")
         self.data.bind("dc-terms", "http://purl.org/dc/terms/")
 
@@ -259,13 +278,30 @@ class RDFMapper:
         # column_headers = list(self.table)
         #
         for index in range(len(self.table)):
-            cemetery_uri = DATA_NS['cemetery_' + str(index)]
-            # print(self.table.ix[index])
-            # print('row number: ' + str(index))
-            row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
+
+            # create an URI
+            names = split_cemetery_name(self.table.ix[index]['nykyiset_kunnat'])
+            photo_project_name = names['narc_name']
+            if photo_project_name in self.narc_names:
+                cemetery_uri = URIRef(self.narc_names[photo_project_name])
+                del self.narc_names[photo_project_name]
+            else:
+                # create new URIs for cemeteries that are not already in WarSampo
+                local_name = 'h0' + str(self.new_cemetery_id) + '_1'
+                self.new_cemetery_id += 1
+                cemetery_uri = CEMETERY_DATA_NS[local_name]
+
+            # convert to RDF
+            if self.table.ix[index]['tyyppi'] != 'ei_ole' and self.table.ix[index]['nykyiset_kunnat'] != 'ei_ole':
+                row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
             if row_rdf:
                 self.data += row_rdf
 
+        # Generate simple cemeteries with no metadata from the leftover
+        # cemeteries that were not found in the photography project
+        self.data += self.create_extra_cemeteries(self.narc_names)
+
+        # generate schema RDF
         for prop in CEMETERY_MAPPING.values():
 
             if 'uri' in prop:
@@ -305,10 +341,9 @@ if __name__ == "__main__":
     output_dir = args.output + '/' if args.output[-1] != '/' else args.output
 
     if args.mode == "CEMETERIES":
-        mapper = RDFMapper(CEMETERY_MAPPING, CEMETERY_SCHEMA_NS.TempCemetery, loglevel=args.loglevel.upper())
+        mapper = RDFMapper(CEMETERY_MAPPING, WARSA_SCHEMA_NS['Cemetery'], loglevel=args.loglevel.upper())
+        mapper.read_narc_cemetery_uris_from_csv()
         mapper.read_csv(args.input)
-
         mapper.process_rows()
-
-        mapper.serialize(output_dir + "cemeteries-temp.ttl", output_dir + "cemeteries-photographs.ttl",
-                         output_dir + "cemetery-photo-media", output_dir + "cemeteries-schema.ttl")
+        mapper.serialize(output_dir + "cemeteries.ttl", output_dir + "cemetery_photos_and_photography_events.ttl",
+                         output_dir + "cemetery-photo-media.ttl", output_dir + "cemeteries-schema.ttl")

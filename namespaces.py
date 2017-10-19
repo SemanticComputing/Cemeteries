@@ -19,6 +19,7 @@ CEMETERY_SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/places/cemeteries/')
 PHOTOGRAPH_SCHEMA_NS = Namespace('http://ldf.fi/schema/warsa/photographs/')
 
 # warsa data namespaces
+CEMETERY_DATA_NS = Namespace('http://ldf.fi/warsa/places/cemeteries/') 
 DATA_NS = Namespace('http://ldf.fi/warsa/temp/')
 EVENTS_NS = Namespace('http://ldf.fi/warsa/events/')
 # CEMETERY_PHOTO_NS = Namespace('http://ldf.fi/warsa/photographs/cemeteries/')
