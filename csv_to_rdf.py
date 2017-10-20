@@ -33,6 +33,11 @@ class RDFMapper:
         self.narc_names = {}
         self.new_cemetery_id = 923
         self.photo_counter = 0
+        self.cemeteries_from_project = 0
+        self.cemeteries_in_warsampo_not_project = 0
+        self.cemeteries_new_to_warsampo = 0
+        self.cemeteries_already_in_warsampo = 0
+        self.cemeteries_found_in_warsampo = 0
         self.missing_filenames = []
         self.missing_filename_columns = []
         logging.basicConfig(filename='cemeteries.log',
@@ -152,6 +157,7 @@ class RDFMapper:
                 # cemetery data is based on two sources
                 row_rdf.add((entity_uri, DC.source, photo_project_source_uri))
                 row_rdf.add((entity_uri, DC.source, casualties_source_uri))
+
             else:
                 # Don't create class instance if there is no data about it
                 logging.debug('No data found for {uri}'.format(uri=entity_uri))
@@ -231,6 +237,7 @@ class RDFMapper:
                 # ignore duplicate labels
                 pass
             self.narc_names[key] = row.pop('uri').rstrip()
+        self.cemeteries_already_in_warsampo = len(self.narc_names.keys())
 
     def create_extra_cemeteries(self, cemeteries):
         cemetery_rdf = Graph()
@@ -302,21 +309,27 @@ class RDFMapper:
         #
         for index in range(len(self.table)):
 
-            # create an URI
-            names = split_cemetery_name(self.table.ix[index]['nykyiset_kunnat'])
-            photo_project_name = names['narc_name']
-            if photo_project_name in self.narc_names:
-                cemetery_uri = URIRef(self.narc_names[photo_project_name])
-                del self.narc_names[photo_project_name]
-            else:
-                # create new URIs for cemeteries that are not already in WarSampo
-                local_name = 'h0' + str(self.new_cemetery_id) + '_1'
-                self.new_cemetery_id += 1
-                cemetery_uri = CEMETERY_DATA_NS[local_name]
+
 
             # convert to RDF
             if self.table.ix[index]['tyyppi'] != 'ei_ole' and self.table.ix[index]['nykyiset_kunnat'] != 'ei_ole':
+
+                # create an URI
+                names = split_cemetery_name(self.table.ix[index]['nykyiset_kunnat'])
+                photo_project_name = names['narc_name']
+                if photo_project_name in self.narc_names:
+                    cemetery_uri = URIRef(self.narc_names[photo_project_name])
+                    del self.narc_names[photo_project_name]
+                    self.cemeteries_found_in_warsampo += 1
+                else:
+                    # create new URIs for cemeteries that are not already in WarSampo
+                    local_name = 'h0' + str(self.new_cemetery_id) + '_1'
+                    self.new_cemetery_id += 1
+                    cemetery_uri = CEMETERY_DATA_NS[local_name]
+                    self.cemeteries_new_to_warsampo += 1
+
                 row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
+
             if row_rdf:
                 self.data += row_rdf
 
@@ -328,11 +341,18 @@ class RDFMapper:
         #for column in self.missing_filename_columns:
         #    print(column)
 
-
-
         # Generate simple cemeteries with no metadata from the leftover
         # cemeteries that were not found in the photography project
+        self.cemeteries_in_warsampo_not_project = len(self.narc_names.keys())
         self.data += self.create_extra_cemeteries(self.narc_names)
+
+        total_found = self.cemeteries_found_in_warsampo + self.cemeteries_new_to_warsampo
+
+        self.log.info('cemeteries already in WarSampo: %s' % self.cemeteries_already_in_warsampo)
+        self.log.info('cemeteries found in WarSampo: %s' % self.cemeteries_found_in_warsampo)
+        self.log.info('cemeteries new to WarSampo: %s' % self.cemeteries_new_to_warsampo)
+        self.log.info('total cemeteries found in the project: %s' % str(total_found))
+        self.log.info('cemeteries in Warsampo but not found in the project: %s' % self.cemeteries_in_warsampo_not_project)
 
         # generate schema RDF
         for prop in CEMETERY_MAPPING.values():
