@@ -81,6 +81,8 @@ class RDFMapper:
             current_municipality = None
             former_municipality = None
             narc_name = None
+            number_of_graves_string = None
+            number_of_graves_int = None
 
             if column_name == 'pituus_n' or column_name == 'leveys_e':
                 if value:
@@ -121,6 +123,11 @@ class RDFMapper:
                 photographer, photo_club, cemetery_id, entity_uri, photo_number, caption_fi, caption_en)
             elif column_name.endswith('kuvaajan_nimi'):
                 liter = None
+            elif column_name == 'hautoja':
+                if isinstance(value, int ):
+                    number_of_graves_int = value
+                else:
+                    number_of_graves_string = value
             else:
                 liter = Literal(value)
 
@@ -130,6 +137,12 @@ class RDFMapper:
                 row_rdf.add((entity_uri, mapping['original_narc_name_uri'], narc_name))
                 if former_municipality and former_municipality != None:
                     row_rdf.add((entity_uri, mapping['former_municipality_uri'], former_municipality))
+            elif column_name == 'hautoja':
+                if number_of_graves_int != None:
+                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_int, datatype=XSD.integer)))
+                else:
+                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))
+
             elif liter:
                 #print(mapping)
                 row_rdf.add((entity_uri, mapping['uri'], liter))
