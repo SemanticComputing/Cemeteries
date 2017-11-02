@@ -67,7 +67,7 @@ class RDFMapper:
 
             value = row[column_name]
 
-            if column_name == 'hautausmaan_nimi' and value == 'ei_ole':
+            if column_name == 'hautausmaan_nimi' and (value == 'ei_ole' or value == ''):
                 names = split_cemetery_name(row['nykyiset_kunnat'])
                 value = names['narc_name']
 
@@ -153,7 +153,7 @@ class RDFMapper:
                 if number_of_graves_int != None:
                     row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_int, datatype=XSD.integer)))
                 else:
-                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))                            
+                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))
             elif liter:
                 #print(mapping)
                 row_rdf.add((entity_uri, mapping['uri'], liter))
@@ -238,19 +238,21 @@ class RDFMapper:
     def read_narc_cemetery_uris_from_csv(self):
         reader = csv.DictReader(open('cemetery-uris-labels-narc.csv'))
         for row in reader:
-            key = row.pop('original_narc_name').rstrip()
+            label = row.pop('original_narc_name').rstrip()
+            key = label.lower()
             if key in self.narc_names:
                 # ignore duplicate labels
                 pass
-            self.narc_names[key] = row.pop('uri').rstrip()
+            uri = row.pop('uri').rstrip()
+            self.narc_names[key] = (uri, label)
         self.cemeteries_already_in_warsampo = len(self.narc_names.keys())
 
     def create_extra_cemeteries(self, cemeteries):
         cemetery_rdf = Graph()
-        for label in cemeteries:
-            cemetery_uri = URIRef(cemeteries[label])
+        for key in cemeteries:
+            cemetery_uri = URIRef(cemeteries[key][0])
             cemetery_rdf.add((cemetery_uri, RDF.type, self.instance_class))
-            cemetery_rdf.add((cemetery_uri, SKOS.prefLabel, Literal(label)))
+            cemetery_rdf.add((cemetery_uri, SKOS.prefLabel, Literal(cemeteries[key][1])))
         return cemetery_rdf
 
     def serialize(self, destination_data, destination_photographs, destination_ios, destination_schema):
@@ -318,13 +320,13 @@ class RDFMapper:
 
 
             # convert to RDF
-            if self.table.ix[index]['tyyppi'] != 'ei_ole' and self.table.ix[index]['nykyiset_kunnat'] != 'ei_ole':
+            if self.table.ix[index]['tyyppi'] != 'ei_ole':
 
                 # create an URI
                 names = split_cemetery_name(self.table.ix[index]['nykyiset_kunnat'])
-                photo_project_name = names['narc_name']
+                photo_project_name = names['narc_name'].lower()
                 if photo_project_name in self.narc_names:
-                    cemetery_uri = URIRef(self.narc_names[photo_project_name])
+                    cemetery_uri = URIRef(self.narc_names[photo_project_name][0])
                     del self.narc_names[photo_project_name]
                     self.cemeteries_found_in_warsampo += 1
                 else:
@@ -333,11 +335,16 @@ class RDFMapper:
                     self.new_cemetery_id += 1
                     cemetery_uri = CEMETERY_DATA_NS[local_name]
                     self.cemeteries_new_to_warsampo += 1
+                    #print(cemetery_uri)
+                    #print(photo_project_name)
 
                 row_rdf = self.map_row_to_rdf(cemetery_uri, self.table.ix[index])
 
             if row_rdf:
                 self.data += row_rdf
+
+        #print(self.cemeteries_found_in_warsampo)
+        #print(self.cemeteries_new_to_warsampo)
 
         self.log.info('Photos created: %s' % self.photo_counter)
         #print(len(self.missing_filenames))
