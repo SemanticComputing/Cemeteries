@@ -153,8 +153,7 @@ class RDFMapper:
                 if number_of_graves_int != None:
                     row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_int, datatype=XSD.integer)))
                 else:
-                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))
-
+                    row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))                            
             elif liter:
                 #print(mapping)
                 row_rdf.add((entity_uri, mapping['uri'], liter))

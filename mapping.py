@@ -4,7 +4,7 @@
 Mapping of CSV columns to RDF properties
 """
 
-from converters import add_trailing_zeros, parse_coordinate, split_cemetery_name, convert_int
+from converters import add_trailing_zeros, parse_coordinate, split_cemetery_name, convert_int, convert_dates
 from namespaces import *
 
 CEMETERY_MAPPING = {
@@ -37,9 +37,11 @@ CEMETERY_MAPPING = {
                    'name_fi': 'Hautojen lukumäärä',
                    'name_en': 'Number of graves'},
     'perustettu': {'uri': CEMETERY_SCHEMA_NS.date_of_foundation,
+                   'converter': convert_dates,
                    'name_fi': 'Perustamisvuosi',
                    'name_en': 'Date of foundation'},
     'paljastettu': {'uri': CEMETERY_SCHEMA_NS.memorial_unveiling_date,
+                   'converter': convert_dates,
                    'name_fi': 'Muistimerkin paljastamisaika',
                    'name_en': 'Memorial unveiling date'},
     'nimi': {'uri': CEMETERY_SCHEMA_NS.memorial,
