@@ -119,11 +119,14 @@ class RDFMapper:
                     caption_en = "Panorama of the area"
 
                 # check if photo files exist
+                #big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/3000x2000px/' + value)
+                #small_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/300x200px/' + value)
                 big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
-                small_photo = Path('/esko-local-files/hautausmaat/300x200px/' + value)
+                small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
 
-                #if not big_photo.is_file():
-                #    self.missing_filenames.append(value)
+                if not big_photo.is_file():
+                    #self.missing_filenames.append('3000x2000px/' + value)
+                    self.missing_filenames.append(value)
                     #self.missing_filename_columns.append(column_name)
 
                 #if not small_photo.is_file():
