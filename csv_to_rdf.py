@@ -67,9 +67,13 @@ class RDFMapper:
 
             value = row[column_name]
 
-            if column_name == 'hautausmaan_nimi' and (value == 'ei_ole' or value == ''):
+            if column_name == 'hautausmaan_nimi':
                 names = split_cemetery_name(row['nykyiset_kunnat'])
-                value = names['narc_name']
+                if (value == 'ei_ole' or value == ''):
+                    value = names['narc_name']
+                else:
+                    value = names['current_municipality'] + ', ' + value
+
 
             if value == 'ei_ole' or value == 'ei ole' or value == '':
                 # print(value)
@@ -119,20 +123,18 @@ class RDFMapper:
                     caption_en = "Panorama of the area"
 
                 # check if photo files exist
-                #big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/3000x2000px/' + value)
-                #small_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/300x200px/' + value)
-                big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
-                small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
+                big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/3000x2000px/' + value)
+                small_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/300x200px/' + value)
+                #big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
+                #small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
 
-                if not big_photo.is_file():
+                #if not big_photo.is_file():
+                #    self.missing_filenames.append(value)
                     #self.missing_filenames.append('3000x2000px/' + value)
-                    self.missing_filenames.append(value)
-                    #self.missing_filename_columns.append(column_name)
 
                 #if not small_photo.is_file():
-                #    self.missing_filenames.append('300x200px/' + value)
-                    #self.missing_filename_columns.append(column_name)
-
+                    #self.missing_filenames.append(value)
+                    #self.missing_filenames.append('300x200px/' + value)
 
                 self.create_photograph_and_photography_event_instances(value,
                 photographer, photo_club, cemetery_id, entity_uri, photo_number, caption_fi, caption_en)
