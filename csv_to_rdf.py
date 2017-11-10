@@ -245,9 +245,14 @@ class RDFMapper:
         for row in reader:
             label = row.pop('original_narc_name').rstrip()
             key = label.lower()
-            if key in self.narc_names:
-                # ignore duplicate labels
-                pass
+
+            # Kokemäki was the only duplicate label in narc listing,
+            # manually renamed to Kokemäki 3 csv
+            #if key in self.narc_names:
+            #    # ignore duplicate label
+            #    print(key)
+            #    pass
+
             uri = row.pop('uri').rstrip()
             self.narc_names[key] = (uri, label)
         self.cemeteries_already_in_warsampo = len(self.narc_names.keys())
