@@ -128,13 +128,13 @@ class RDFMapper:
                 #big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
                 #small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
 
-                #if not big_photo.is_file():
-                #    self.missing_filenames.append(value)
-                    #self.missing_filenames.append('3000x2000px/' + value)
-
-                #if not small_photo.is_file():
+                if not big_photo.is_file():
                     #self.missing_filenames.append(value)
-                    #self.missing_filenames.append('300x200px/' + value)
+                    self.missing_filenames.append('3000x2000px/' + value)
+
+                if not small_photo.is_file():
+                    #self.missing_filenames.append(value)
+                    self.missing_filenames.append('300x200px/' + value)
 
                 self.create_photograph_and_photography_event_instances(value,
                 photographer, photo_club, cemetery_id, entity_uri, photo_number, caption_fi, caption_en)
@@ -353,16 +353,10 @@ class RDFMapper:
             if row_rdf:
                 self.data += row_rdf
 
-        #print(self.cemeteries_found_in_warsampo)
-        #print(self.cemeteries_new_to_warsampo)
-
-        self.log.info('Photos created: %s' % self.photo_counter)
-        #print(len(self.missing_filenames))
-        #print(len(self.missing_filename_columns))
         for filename in self.missing_filenames:
-           print(filename)
-        #for column in self.missing_filename_columns:
-         #  print(column)
+            self.log.warning('missing file: %s' % filename)
+        self.log.info('photograph instances created: %s' % self.photo_counter)
+
 
         # Generate simple cemeteries with no metadata from the leftover
         # cemeteries that were not found in the photography project
