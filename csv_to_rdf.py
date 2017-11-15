@@ -67,14 +67,6 @@ class RDFMapper:
 
             value = row[column_name]
 
-            if column_name == 'hautausmaan_nimi':
-                names = split_cemetery_name(row['nykyiset_kunnat'])
-                if (value == 'ei_ole' or value == ''):
-                    value = names['narc_name']
-                else:
-                    value = names['current_municipality'] + ', ' + value
-
-
             if value == 'ei_ole' or value == 'ei ole' or value == '':
                 # print(value)
                 continue
@@ -87,21 +79,30 @@ class RDFMapper:
 
             # gather info into these variables
             liter = None
-            current_municipality = None
-            former_municipality = None
-            narc_name = None
             number_of_graves_string = None
             number_of_graves_int = None
 
             if column_name == 'pituus_n' or column_name == 'leveys_e':
                 if value:
                     liter = Literal(value, datatype=XSD.float)
-            # nykyiset_kunnat column is split into three properties
+            # use nykyiset_kunnat and hautausmaan_nimi columns to generate
+            # prefLabel, altLabel, current and former municipality
             elif column_name == 'nykyiset_kunnat':
-                current_municipality = Literal(value['current_municipality'])
-                if value['former_municipality']:
-                    former_municipality = Literal(value['former_municipality'])
-                narc_name = Literal(value['narc_name'])
+                official_name = row['hautausmaan_nimi']
+                # if official name is missing, use narc name and add
+                # municipality only if it has changed
+                if (official_name == 'ei_ole' or value == ''):
+                    if (value['former_municipality']):
+                        value['prefLabel'] = value['current_municipality'] + ', ' + value['narc_name']
+                        value['altLabel'] = value['narc_name']
+                    else:
+                        # only prefLabel
+                        value['prefLabel'] = value['narc_name']
+                else:
+                    value['prefLabel'] = value['current_municipality'] + ', ' + official_name
+                    if value['prefLabel'] != value['narc_name']:
+                        value['altLabel'] = value['narc_name']
+
             # collect all photo info and create photograph and photography instances
             elif column_name.startswith('kuva_') and not column_name.endswith('kuvaajan_nimi'):
                 ph = column_name[0:6] + '_kuvaajan_nimi'
@@ -150,10 +151,12 @@ class RDFMapper:
 
             # create RDF data
             if column_name == 'nykyiset_kunnat':
-                row_rdf.add((entity_uri, mapping['current_municipality_uri'], current_municipality))
-                row_rdf.add((entity_uri, mapping['original_narc_name_uri'], narc_name))
-                if former_municipality and former_municipality != None:
-                    row_rdf.add((entity_uri, mapping['former_municipality_uri'], former_municipality))
+                row_rdf.add((entity_uri, SKOS.prefLabel, Literal(value['prefLabel'])))
+                if 'altLabel' in value:
+                    row_rdf.add((entity_uri, mapping['original_narc_name_uri'], Literal(value['altLabel'])))
+                row_rdf.add((entity_uri, mapping['current_municipality_uri'], Literal(value['current_municipality'])))
+                if value['former_municipality'] != None:
+                    row_rdf.add((entity_uri, mapping['former_municipality_uri'], Literal(value['former_municipality'])))
             elif column_name == 'hautoja':
                 if number_of_graves_int != None:
                     row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_int, datatype=XSD.integer)))
