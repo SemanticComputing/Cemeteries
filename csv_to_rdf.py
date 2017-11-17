@@ -222,7 +222,8 @@ class RDFMapper:
 
         photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
-        photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
+        if (photographer != 'ei_ole'):
+            photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))    
         photo_rdf.add((photography_uri, DC.source, photo_project_source_uri))
 
         self.photographs += photo_rdf
