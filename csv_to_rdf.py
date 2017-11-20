@@ -124,7 +124,7 @@ class RDFMapper:
                     caption_en = "Panorama of the area"
 
                 # check if photo files exist
-                big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/3000x2000px/' + value)
+                big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/2048x1365px/' + value)
                 small_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/300x200px/' + value)
                 #big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
                 #small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
@@ -223,7 +223,7 @@ class RDFMapper:
         photo_rdf.add((photography_uri, RDF.type, WARSA_SCHEMA_NS['Photography']))
         photo_rdf.add((photography_uri, CIDOC.P94_has_created, photo_uri))
         if (photographer != 'ei_ole'):
-            photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))    
+            photo_rdf.add((photography_uri, CIDOC.P14_carried_out_by, Literal(photographer)))
         photo_rdf.add((photography_uri, DC.source, photo_project_source_uri))
 
         self.photographs += photo_rdf
