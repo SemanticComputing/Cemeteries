@@ -126,12 +126,12 @@ class RDFMapper:
                 # check if photo files exist
                 big_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/2048x1365px/' + value)
                 small_photo = Path('/m/cs/project/sotasampo-public/photographs/cemeteries/300x200px/' + value)
-                #big_photo = Path('/esko-local-files/hautausmaat/3000x2000px/' + value)
+                #big_photo = Path('/esko-local-files/hautausmaat/2048x1365px/' + value)
                 #small_photo = Path('esko-local-files/hautausmaat/300x200px/' + value)
 
                 if not big_photo.is_file():
                     #self.missing_filenames.append(value)
-                    self.missing_filenames.append('3000x2000px/' + value)
+                    self.missing_filenames.append('2048x1365px/' + value)
 
                 if not small_photo.is_file():
                     #self.missing_filenames.append(value)
@@ -192,7 +192,7 @@ class RDFMapper:
         # create information objects
         io_rdf = Graph()
         io_rdf.add((lg_uri, SCHEMA_ORG.contentUrl,
-                       Literal('https://static.sotasampo.fi/photographs/cemeteries/3000x2000px/' + filename)))
+                       Literal('https://static.sotasampo.fi/photographs/cemeteries/2048x1365px/' + filename)))
         io_rdf.add((lg_uri, CIDOC.P138_represents, photo_uri))
         io_rdf.add((lg_uri, RDF.type, CIDOC.E73_Information_Object))
         io_rdf.add((lg_uri, SKOS.prefLabel, Literal('Full size', 'en')))
