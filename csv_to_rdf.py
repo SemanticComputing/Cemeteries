@@ -235,7 +235,7 @@ class RDFMapper:
 
         :param csv_input: CSV input (filename or buffer)
         """
-        csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=';', quotechar='"',
+        csv_data = pd.read_csv(csv_input, encoding='UTF-8', index_col=False, sep=',', quotechar='"',
                                # parse_dates=[1], infer_datetime_format=True, dayfirst=True,
                                na_values=[' '],
                                #converters={'ammatti': lambda x: x.lower()}
