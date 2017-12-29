@@ -4,7 +4,7 @@
 Mapping of CSV columns to RDF properties
 """
 
-from converters import add_trailing_zeros, parse_coordinate, split_cemetery_name, convert_int, convert_dates
+from converters import add_trailing_zeros, parse_coordinate, split_cemetery_name, convert_int, convert_dates, geocode
 from namespaces import *
 
 CEMETERY_MAPPING = {
@@ -50,14 +50,16 @@ CEMETERY_MAPPING = {
     'kuvanveistäjä': {'uri': CEMETERY_SCHEMA_NS.memorial_sculptor,
                    'name_fi': 'Kuvanveistäjä',
                    'name_en': 'Sculptor'},
-    'pituus_n': {'uri': WGS84.lat,
-                 'converter': parse_coordinate},
-    'leveys_e': {'uri': WGS84.long,
-                 'converter': parse_coordinate},
+    #'pituus_n': {'uri': WGS84.lat,
+    #             'converter': parse_coordinate},
+    #'leveys_e': {'uri': WGS84.long,
+    #                 'converter': parse_coordinate},
     'tarkka_katuosoite': {'uri': CEMETERY_SCHEMA_NS.address,
                    'name_fi': 'Osoite',
-                   'name_en': 'Address'},
-
+                   'name_en': 'Address',
+                   'lat_uri': WGS84.lat,
+                   'long_uri': WGS84.long,
+                   'converter': geocode},
     'kuva_1_yleiskuva_sankarihautausmaasta': {},
     'kuva_1_kuvaajan_nimi': {},
     'kuva_2_yksittäinen_hauta_risteineen_muistolaattoineen': {},

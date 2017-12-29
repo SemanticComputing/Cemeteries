@@ -9,6 +9,7 @@ import argparse
 import logging
 # import re
 
+
 import pandas as pd
 from rdflib import URIRef, Graph, Literal
 from mapping import CEMETERY_MAPPING
@@ -162,6 +163,11 @@ class RDFMapper:
                     row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_int, datatype=XSD.integer)))
                 else:
                     row_rdf.add((entity_uri, mapping['uri'], Literal(number_of_graves_string)))
+            elif column_name == 'tarkka_katuosoite':
+                row_rdf.add((entity_uri, mapping['uri'], Literal(value['address'])))
+                row_rdf.add((entity_uri, mapping['lat_uri'], Literal(value['lat'], datatype=XSD.float)))
+                row_rdf.add((entity_uri, mapping['long_uri'], Literal(value['lng'], datatype=XSD.float)))
+                #print(value)
             elif liter:
                 #print(mapping)
                 row_rdf.add((entity_uri, mapping['uri'], liter))
@@ -178,6 +184,8 @@ class RDFMapper:
 
 
         return row_rdf
+
+
 
     def create_photograph_and_photography_event_instances(self, filename, photographer, photo_club, cemetery_id,
                                                           cemetery_uri, photo_number, caption_fi, caption_en):

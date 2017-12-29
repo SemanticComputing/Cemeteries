@@ -7,6 +7,7 @@ Converters for CSV cell data
 import datetime
 import logging
 import re
+import requests
 
 from rdflib import Graph, Literal
 from slugify import slugify
@@ -264,3 +265,61 @@ def split_cemetery_name(raw_value):
     return { 'current_municipality': current_municipality,
         'former_municipality': former_municipality,
         'narc_name': narc_name }
+
+def geocode(raw_value):
+    GOOGLE_MAPS_API_URL = 'https://maps.googleapis.com/maps/api/geocode/json'
+
+    if ' / ' in raw_value:
+        input_adr = raw_value.split(' / ')[0]
+    else:
+        input_adr = raw_value
+
+
+
+    params = {
+        'address': input_adr,
+        'sensor': 'false',
+        'region': 'fi',
+        'key': 'AIzaSyAz7aHBd-VrYm2T2neu8w0_TWy97otAb5I'
+    }
+
+    # Do the request and get the response data
+    req = requests.get(GOOGLE_MAPS_API_URL, params=params)
+    res = req.json()
+
+    geodata = dict()
+
+    # check if there are no results
+    if len(res['results']) == 0:
+        if (raw_value) == 'Tehtaankirkontie 5, 73500 Juankoski':
+            geodata['lat'] = 63.064402
+            geodata['lng'] = 28.329469
+            geodata['address'] = 'Tehtaankirkontie 5, 73500 Juankoski'
+        elif (raw_value) == 'Hiittistentie 2, 25940 Hiittinen':
+            geodata['lat'] = 59.891527
+            geodata['lng'] = 22.522370
+            geodata['address'] = 'Hiittistentie 2, 25940 Hiittinen'
+        elif (raw_value) == 'Mäntysaari, 47910 Hillosensalmi':
+            geodata['lat'] = 61.191018
+            geodata['lng'] = 26.762769
+            geodata['address'] = 'Mäntysaari, 47910 Hillosensalmi'
+        else:
+            print(input_adr)
+            print(res)
+            geodata['lat'] = 60.0
+            geodata['lng'] = 50.0
+            adr = 'empty'
+            geodata['address'] = adr
+        return(geodata)
+
+    else:
+        # Use the first result
+        result = res['results'][0]
+
+        geodata['lat'] = result['geometry']['location']['lat']
+        geodata['lng'] = result['geometry']['location']['lng']
+        adr = result['formatted_address'].rsplit(',', 1)[0]  # remove country from address
+
+        geodata['address'] = adr
+        #print('{address}. (lat, lng) = ({lat}, {lng})'.format(**geodata))
+        return geodata
